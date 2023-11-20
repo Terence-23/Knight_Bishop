@@ -45,5 +45,11 @@ namespace Knight_Bishop
         {
             return x ^ y;
         }
+
+        internal void Deconstruct(out object x, out object y)
+        {
+            x = this.x;
+            y = this.y;
+        }
     }
 }

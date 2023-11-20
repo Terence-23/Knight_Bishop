@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Text;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -71,15 +72,18 @@ namespace Knight_Bishop
     
         public bool Move(Piece piece, BoardPosition new_pos)
         {
-            if (!new_pos.IsValid())
-            {
-                return false;
-            }
-
             var possibleMoves = piece.PossibleMoves(this, true);
             if (possibleMoves.Contains(new_pos)){
-                
+
+                cellOccupants[piece.position.x , piece.position.y] = null;
+                if (cellOccupants[new_pos.x, new_pos.y] != null)
+                {
+                    pieces.RemoveAll((Piece piece) => piece.position == new_pos);
+
+                }
+                cellOccupants[new_pos.x, new_pos.y] = piece.color;
                 piece.position = new_pos;
+                
 
                 return true;
             }

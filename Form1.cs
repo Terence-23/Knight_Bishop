@@ -24,7 +24,27 @@ namespace Knight_Bishop
         }
         private void pictureBox1OnClick(object sender, MouseEventArgs e)
         {
+            BoardPosition tile = new(e.X/ board.cell_width, e.Y/ board.cell_height);
 
+            if (selected != null && board.Move(selected, tile))
+            {
+                selected = null;
+            }
+            else if (board.cellOccupants[tile.x, tile.y] != null)
+            {
+                foreach(Piece piece in board.pieces)
+                {
+                    if (piece.position == tile)
+                    {
+                        selected = piece;
+                    }
+                }
+            }
+            else
+            {
+                selected = null;
+            }
+            pictureBox1.Refresh();
         }
     }
 }
