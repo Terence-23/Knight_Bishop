@@ -70,24 +70,41 @@ namespace Knight_Bishop
 
         }
     
-        public bool Move(Piece piece, BoardPosition new_pos)
+        public MoveStatus ManualMove(Piece piece, BoardPosition newPos)
         {
             var possibleMoves = piece.PossibleMoves(this, true);
-            if (possibleMoves.Contains(new_pos)){
+            var status = MoveStatus.Move;
 
+            if (possibleMoves.Contains(newPos))
+            {
                 cellOccupants[piece.position.x , piece.position.y] = null;
-                if (cellOccupants[new_pos.x, new_pos.y] != null)
+                if (cellOccupants[newPos.x, newPos.y] != null)
                 {
-                    pieces.RemoveAll((Piece piece) => piece.position == new_pos);
-
+                    pieces.RemoveAll((Piece piece) => piece.position == newPos);
+                    status = MoveStatus.Take;
                 }
-                cellOccupants[new_pos.x, new_pos.y] = piece.color;
-                piece.position = new_pos;
+                cellOccupants[newPos.x, newPos.y] = piece.color;
+                piece.position = newPos;
                 
 
-                return true;
+                return status;
             }
-            return false;
+            return MoveStatus.Failed;
+        }
+        public MoveStatus UncheckedMove(Piece piece, BoardPosition newPos)
+        {
+            var status = MoveStatus.Move;
+            cellOccupants[piece.position.x, piece.position.y] = null;
+            if (cellOccupants[newPos.x, newPos.y] != null)
+            {
+                pieces.RemoveAll((Piece piece) => piece.position == newPos);
+                status = MoveStatus.Take;
+            }
+            cellOccupants[newPos.x, newPos.y] = piece.color;
+            piece.position = newPos;
+
+
+            return status;
         }
     }
 }

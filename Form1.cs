@@ -26,13 +26,13 @@ namespace Knight_Bishop
         {
             BoardPosition tile = new(e.X/ board.cell_width, e.Y/ board.cell_height);
 
-            if (selected != null && board.Move(selected, tile))
+            if (selected != null && board.ManualMove(selected, tile))
             {
                 selected = null;
             }
             else if (board.cellOccupants[tile.x, tile.y] != null)
             {
-                foreach(Piece piece in board.pieces)
+                foreach(Piece piece in board.pieces) 
                 {
                     if (piece.position == tile)
                     {
