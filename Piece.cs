@@ -53,7 +53,7 @@ namespace Knight_Bishop
             {
                 case PieceVariant.Bishop:
 
-                    var position = (BoardPosition) this.position.Clone();
+                    var position = (BoardPosition)this.position.Clone();
                     position.x--;
                     position.y--;
 
@@ -62,15 +62,16 @@ namespace Knight_Bishop
 
                         if (board.cellOccupants[position.x, position.y] == color)
                         {
+                            if (!blocked) { possibleMoves.Add((BoardPosition)position.Clone()); }
                             break;
                         }
                         else if (board.cellOccupants[position.x, position.y] != null)
                         {
                             // Enemy piece
-                            possibleMoves.Add((BoardPosition) position.Clone());
+                            possibleMoves.Add((BoardPosition)position.Clone());
                             break;
                         }
-                        possibleMoves.Add((BoardPosition) position.Clone());
+                        possibleMoves.Add((BoardPosition)position.Clone());
 
                         position.x--;
                         position.y--;
@@ -81,11 +82,12 @@ namespace Knight_Bishop
 
                     position.x--;
                     position.y++;
-                    while (position.IsValid()) 
+                    while (position.IsValid())
                     {
 
                         if (board.cellOccupants[position.x, position.y] == color)
                         {
+                            if (!blocked) { possibleMoves.Add((BoardPosition)position.Clone()); }
                             break;
                         }
                         else if (board.cellOccupants[position.x, position.y] != null)
@@ -110,6 +112,7 @@ namespace Knight_Bishop
 
                         if (board.cellOccupants[position.x, position.y] == color)
                         {
+                            if (!blocked) { possibleMoves.Add((BoardPosition)position.Clone()); }
                             break;
                         }
                         else if (board.cellOccupants[position.x, position.y] != null)
@@ -123,8 +126,8 @@ namespace Knight_Bishop
                         position.x++;
                         position.y--;
 
-                    } 
-                    
+                    }
+
                     position = (BoardPosition)this.position.Clone();
                     position.x++;
                     position.y++;
@@ -134,6 +137,7 @@ namespace Knight_Bishop
 
                         if (board.cellOccupants[position.x, position.y] == color)
                         {
+                            if (!blocked) { possibleMoves.Add((BoardPosition)position.Clone()); }
                             break;
                         }
                         else if (board.cellOccupants[position.x, position.y] != null)
@@ -149,36 +153,39 @@ namespace Knight_Bishop
 
                     }
 
-                    goto check_king ;
+                    goto check_king;
                 case PieceVariant.Knight:
                     for (int i = -2; i <= 2; i += 4)
                     {
-                        for(int j = -1; j< 2; j += 2)
+                        for (int j = -1; j < 2; j += 2)
                         {
                             position = new BoardPosition(this.position.x + i, this.position.y + j);
-                            if (position.IsValid() && board.cellOccupants[position.x, position.y] != color)
+                            if (position.IsValid()
+                                && (board.cellOccupants[position.x, position.y] != color
+                                || !blocked))
                             {
                                 possibleMoves.Add(position);
                             }
                             position = new BoardPosition(this.position.x + j, this.position.y + i);
-                            if (position.IsValid() && board.cellOccupants[position.x, position.y] != color)
+                            if (position.IsValid()
+                                && (board.cellOccupants[position.x, position.y] != color
+                                || !blocked))
                             {
                                 possibleMoves.Add(position);
                             }
                         }
                     }
                     goto check_king;
-
                 case PieceVariant.King:
                     int x = this.position.x, y = this.position.y;
-                    
-                    for (int i = -1;  i <=1; ++i)
+
+                    for (int i = -1; i <= 1; ++i)
                     {
                         for (int j = -1; j <= 1; ++j)
                         {
                             if (i == 0 && j == 0) continue;
                             position = new BoardPosition(x + i, y + j);
-                            if (position.IsValid() && board.cellOccupants[position.x, position.y] != color)
+                            if (position.IsValid() && (board.cellOccupants[position.x, position.y] != color || !blocked))
                             {
                                 possibleMoves.Add(position);
                             }
@@ -188,7 +195,7 @@ namespace Knight_Bishop
                     {
                         return possibleMoves;
                     }
-                    
+
                     // remove impossible moves;
                     foreach (Piece piece in board.pieces)
                     {
@@ -200,18 +207,17 @@ namespace Knight_Bishop
                     }
                     break;
             }
-            
 
             return possibleMoves;
 
-            check_king:
-            if(!blocked)
+        check_king:
+            if (!blocked)
             {
                 return possibleMoves;
             }
             // check if king is attacked
             Piece? king = null;
-            foreach(Piece piece in board.pieces)
+            foreach (Piece piece in board.pieces)
             {
                 if (piece.color == this.color && piece.variant == PieceVariant.King)
                 {
@@ -223,26 +229,81 @@ namespace Knight_Bishop
             {
                 return possibleMoves;
             }
-            var checkCount = 0;
-            BoardPosition? checkPos = null;
-            foreach(Piece piece in board.pieces)
+            int checkCount;
+            BoardPosition? checkPos;
+            (checkCount, checkPos) = IsCheck(board, king);
+            
+
+
+            if (checkCount > 1)
             {
-                if (piece.PossibleMoves(board, false).Contains(king.position))
+                return new();
+            }
+            else if (checkCount > 0 && checkPos != null)
+            {
+                var moves = Interpose(checkPos, king.position);
+                moves.Add(checkPos);
+
+                return possibleMoves.Intersect(moves).ToList();
+            }
+
+            return possibleMoves;
+            
+        }
+
+        public static (int, BoardPosition?) IsCheck(Board board, Piece king)
+        {
+            int checkCount = 0;
+            BoardPosition? checkPos = null;
+            foreach (Piece piece in board.pieces)
+            {
+                if (piece.color != king.color
+                    && piece.PossibleMoves(board, false).Contains(king.position)
+                )
+                {
+                    ++checkCount;
+                    checkPos = piece.position;
+                }
+                else if (piece.color != king.color &&
+                    (Math.Abs((piece.position - king.position).x)
+                        == Math.Abs((piece.position - king.position).y))
+                        && piece.variant == PieceVariant.Bishop &&
+                        !IsInterposed(piece.position, king.position, board, king.color)
+                       )
                 {
                     ++checkCount;
                     checkPos = piece.position;
                 }
             }
-            if (checkCount > 1 || (checkPos != null && !possibleMoves.Contains(checkPos)))
+            return (checkCount, checkPos);
+        }
+
+        private static bool IsInterposed(BoardPosition piece, BoardPosition king, Board board, PieceColor color)
+        {
+            
+            int pCount = 0;
+            foreach (BoardPosition pos in Interpose(piece, king) )
             {
-                return new();
-            }
-            else if (checkCount > 0 && checkPos != null) {
-                return new() { checkPos };
+                pCount +=
+                    board.cellOccupants[pos.x, pos.y] == color ?
+                    1 : 0;
             }
 
-            return possibleMoves;
+            return pCount > 1;
+        }
+        internal static List<BoardPosition> Interpose(BoardPosition piece, BoardPosition king)
+        {
+            List<BoardPosition> result = new();
+            int dirX = (king - piece).x > 0 ? 1 : -1, dirY = (king - piece).y > 0 ? 1 : -1;
 
+            BoardPosition pos = new BoardPosition(piece.x + dirX, piece.y + dirY);
+            //int pCount = 0;
+            while (pos != king)
+            {
+                result.Add((BoardPosition)pos.Clone());
+                pos += new BoardPosition(dirX, dirY);
+            }
+            return result;
         }
     }
 }

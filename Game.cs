@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,6 +12,8 @@ namespace Knight_Bishop
     {
         public GameType type { get; set; } = GameType.None;
         internal Mover? whiteMover, blackMover;
+        private PictureBox pictureBox;
+        private TextBox textBox;
         public GameStatus status { get; set; } = GameStatus.Pending;
 
         internal Board board;
@@ -18,14 +21,21 @@ namespace Knight_Bishop
         internal int turnCount { get; set; } = 0;
         internal Stack<(List<BoardPosition>, int)> previousPositions { get; }
 
-        public Game(GameType type, Mover? whiteMover, Mover? blackMover, Board board)
+        public Game(GameType type, Mover? whiteMover, Mover? blackMover, Board board, PictureBox pictureBox, TextBox textBox)
         {
             this.type = type;
             this.whiteMover = whiteMover;
             this.blackMover = blackMover;
             this.board = board;
+            previousPositions = new Stack<(List<BoardPosition>, int)>();
+            this.pictureBox = pictureBox;
+            this.textBox = textBox;
+
             Init();
         }
+
+
+
         private void Init()
         {
             if (whiteMover == null &&  blackMover == null)
@@ -41,7 +51,7 @@ namespace Knight_Bishop
                 type = GameType.White;
             }
 
-            if (type ==GameType.White || type == GameType.All)
+            if (type == GameType.White || type == GameType.All)
             {
                 NextMove();
             }
@@ -49,56 +59,102 @@ namespace Knight_Bishop
 
         internal void NextMove()
         {
-        begin:
-            if (turnCount >= 50)
+            if (status != GameStatus.Pending)
             {
-                End(GameEndReason.FiftyMoveRule);
                 return;
             }
-
-
-            if (currentMove == PieceColor.White)
+            while (turnCount < 50)
             {
-                if (type == GameType.White || type == GameType.All)
-                {
-                    //calc next move
-                    var (piece, pos) = whiteMover.NextMove(board, PieceColor.White);
-                }
                 
-                currentMove = PieceColor.Black;
-                if (CheckForRepetition())
-                {
-                    status = GameStatus.Draw;
-                    End(GameEndReason.Repetition);
 
-                    return;
+                if (currentMove == PieceColor.White)
+                {
+                    if (type == GameType.White || type == GameType.All)
+                    {
+                        //calc next move
+                        if (whiteMover == null) throw new InvalidDataException();
+                        var (piece, pos) = whiteMover.NextMove(board, PieceColor.White);
+                        if (piece == null) { Stalemate(); return; }
+                        board.UncheckedMove(piece, pos);
+                        textBox.Text += $"{turnCount + 1}. {(char)piece.variant}{pos} ";
+
+                    }
+
+
+                    currentMove = PieceColor.Black;
+                    if (CheckForRepetition()) { Repetition(); return; }
+                    // check if next move is automatic
+                    if (type == GameType.White || type == GameType.None) { return; }
                 }
-                // check if next move is automatic
-                if (type == GameType.White ||  type == GameType.None) { return; }
+                else
+                {
+                    if (type == GameType.Black || type == GameType.All)
+                    {
+                        //calc next move
+                        if (blackMover == null) throw new InvalidDataException();
+                        var (piece, pos) = blackMover.NextMove(board, PieceColor.Black);
+                        if (piece == null) { Stalemate(); return; }
+                        board.UncheckedMove(piece, pos);
+                        textBox.Text += $"{(char)piece.variant}{pos}" + Environment.NewLine;
+                    }
+
+                    ++turnCount;
+                    currentMove = PieceColor.White;
+                    if (CheckForRepetition()) { Repetition(); return; }
+                    // check if next move is automatic
+                    if (type == GameType.Black || type == GameType.None) { return; }
+                }
+
+                pictureBox.Refresh();
+                textBox.Refresh();
+                
+                Thread.Sleep(30);
+            }
+
+            End(GameEndReason.FiftyMoveRule);
+            return;
+        }
+        
+        void Repetition()
+        {
+            status = GameStatus.Draw;
+            End(GameEndReason.Repetition);
+            
+        }
+        void Stalemate()
+        {
+            Piece? king = null;
+            foreach (Piece piece in board.pieces)
+            {
+                if (piece.color == currentMove && piece.variant == PieceVariant.King)
+                {
+                    king = piece;
+                    break;
+                }
+            }
+            if (king == null)
+            {
+                status = GameStatus.Draw;
+                End(GameEndReason.Stalemate);
+                return;
+            }
+            var (count, _) = Piece.IsCheck(board, king);
+            if (count > 0)
+            {
+                status =
+                    currentMove == PieceColor.White ?
+                    GameStatus.BlackWin :
+                    GameStatus.WhiteWin
+                    ;
+                End(GameEndReason.CheckMate);
+                return;
             }
             else
             {
-                if (type == GameType.Black || type == GameType.All)
-                {
-                    //calc next move
-                    var (piece, pos) = blackMover.NextMove(board, PieceColor.Black);
-                }
-
-
-                ++turnCount;
-                currentMove = PieceColor.White;
-                if (CheckForRepetition())
-                {
-                    status = GameStatus.Draw;
-                    End(GameEndReason.Repetition);
-                    
-                    return;
-                }
-                // check if next move is automatic
-                if (type == GameType.Black || type == GameType.None) { return; }
+                status = GameStatus.Draw;
+                End(GameEndReason.Stalemate);
+                return;
             }
-            
-            goto begin;
         }
 
         internal bool CheckForRepetition()
@@ -129,6 +185,9 @@ namespace Knight_Bishop
 
         internal void End(GameEndReason reason)
         {
+            Console.WriteLine(reason.ToString());
+            Debug.WriteLine(reason.ToString());
+            textBox.Text += Environment.NewLine + Environment.NewLine + $"Game Ended: {reason}" + Environment.NewLine + Environment.NewLine;
 
         }
     }

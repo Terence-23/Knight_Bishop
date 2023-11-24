@@ -4,17 +4,19 @@ namespace Knight_Bishop
     {
         Board board;
         Piece? selected = null;
+        Game? game = null;
         public Form1()
         {
-            List<Piece> pieces = new List<Piece>();
-            pieces.Add(new Piece(PieceColor.White, PieceVariant.Knight, 3, 3));
-            pieces.Add(new Piece(PieceColor.White, PieceVariant.Bishop, 2, 1));
-            pieces.Add(new Piece(PieceColor.White, PieceVariant.King, 2, 2));
-            pieces.Add(new Piece(PieceColor.Black, PieceVariant.King, 1, 0));
-            pieces.Add(new Piece(PieceColor.Black, PieceVariant.Knight, 0, 3));
+            List<Piece> pieces = new List<Piece>
+            {
+                new Piece(PieceColor.Black, PieceVariant.King, 7, 7),
+                new Piece(PieceColor.White, PieceVariant.Bishop, 0, 6),
+                new Piece(PieceColor.White, PieceVariant.King, 4, 4),
+                new Piece(PieceColor.Black, PieceVariant.Bishop, 1, 1),
+                //new Piece(PieceColor.Black, PieceVariant.Knight, 0, 3)
+            };
 
-            board = new(pieces, 40, 40);
-            selected = pieces[1];
+            board = new(pieces, 50, 50);
             InitializeComponent();
         }
 
@@ -24,15 +26,27 @@ namespace Knight_Bishop
         }
         private void pictureBox1OnClick(object sender, MouseEventArgs e)
         {
-            BoardPosition tile = new(e.X/ board.cell_width, e.Y/ board.cell_height);
+            BoardPosition tile = new(e.X / board.cell_width, e.Y / board.cell_height);
 
-            if (selected != null && board.ManualMove(selected, tile))
+            if (selected != null && game != null)
             {
+
+                if (MoveStatus.Failed == board.ManualMove(selected, tile))
+                {
+                    selected = null;
+                    goto end;
+                }
+                textBox1.Text += 
+                    selected.color == PieceColor.White ? 
+                    $"{game.turnCount + 1}. {(char)selected.variant}{tile} ":
+                    $"{(char)selected.variant}{tile}" + Environment.NewLine;
+                
                 selected = null;
+                game.NextMove();
             }
-            else if (board.cellOccupants[tile.x, tile.y] != null)
+            else if (game != null && board.cellOccupants[tile.x, tile.y] == game.currentMove)
             {
-                foreach(Piece piece in board.pieces) 
+                foreach (Piece piece in board.pieces)
                 {
                     if (piece.position == tile)
                     {
@@ -44,7 +58,51 @@ namespace Knight_Bishop
             {
                 selected = null;
             }
+
+            end:
             pictureBox1.Refresh();
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            // game start all
+            game = new Game(
+                GameType.All,
+                new NaiveMover(),
+                new CenterMover(),
+                board,
+                pictureBox1,
+                textBox1
+                );
+            selected = null;
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            // game start black
+            game = new Game(
+                GameType.Black,
+                new NaiveMover(),
+                new CenterMover(),
+                board,
+                pictureBox1,
+                textBox1
+                );
+            selected = null;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            // game start white
+            game = new Game(
+                GameType.White,
+                new NaiveMover(),
+                new CenterMover(),
+                board,
+                pictureBox1,
+                textBox1
+                );
+            selected = null;
         }
     }
 }

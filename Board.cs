@@ -16,6 +16,7 @@ namespace Knight_Bishop
             darkSpace = new(Color.FromArgb(255, 80, 80, 80));
         private SolidBrush lightHighlight = new(Color.FromArgb(200, 150, 150)), 
             darkHighlight = new(Color.FromArgb(80, 80, 200));
+        
 
         public Board(List<Piece> pieces)
         {

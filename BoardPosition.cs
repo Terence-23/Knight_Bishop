@@ -41,6 +41,16 @@ namespace Knight_Bishop
         {
             return !(left == right);
         }
+
+        public static BoardPosition operator -(BoardPosition left, BoardPosition right)
+        {
+            return new(left.x - right.x, left.y - right.y);
+        }
+        public static BoardPosition operator +(BoardPosition left, BoardPosition right)
+        {
+            return new(left.x + right.x, left.y + right.y);
+        }
+
         public override int GetHashCode()
         {
             return x ^ y;
@@ -50,6 +60,10 @@ namespace Knight_Bishop
         {
             x = this.x;
             y = this.y;
+        }
+        public override string ToString()
+        {
+            return $"{(char)('a' + x)}{y + 1}";
         }
     }
 }
