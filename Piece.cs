@@ -1,17 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Knight_Bishop
 {
-    public class Piece
+    public class Piece: ICloneable
     {
         public PieceColor color { get; }
         public PieceVariant variant { get; }
         public BoardPosition position { get; set; }
 
+        public bool IsEqual(Piece other)
+        {
+            if (color != other.color)
+            {
+                //Console.WriteLine("wrong color");
+
+                return false;
+            }
+            else if (variant != other.variant)
+            {
+                //Console.WriteLine("wrong variant");
+
+                return false;
+            }
+            else if (position != other.position)
+            {
+                //Console.WriteLine("wrong piece");
+
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
         public Piece(PieceColor color, PieceVariant variant)
         {
             this.color = color;
@@ -268,7 +294,33 @@ namespace Knight_Bishop
                     (Math.Abs((piece.position - king.position).x)
                         == Math.Abs((piece.position - king.position).y))
                         && piece.variant == PieceVariant.Bishop &&
-                        !IsInterposed(piece.position, king.position, board, king.color)
+                        InterposedCount(piece.position, king.position, board) < 2
+                       )
+                {
+                    ++checkCount;
+                    checkPos = piece.position;
+                }
+            }
+            return (checkCount, checkPos);
+        }
+        public static (int, BoardPosition?) IsCheckNow(Board board, Piece king)
+        {
+            int checkCount = 0;
+            BoardPosition? checkPos = null;
+            foreach (Piece piece in board.pieces)
+            {
+                if (piece.color != king.color
+                    && piece.PossibleMoves(board, false).Contains(king.position)
+                )
+                {
+                    ++checkCount;
+                    checkPos = piece.position;
+                }
+                else if (piece.color != king.color &&
+                    (Math.Abs((piece.position - king.position).x)
+                        == Math.Abs((piece.position - king.position).y))
+                        && piece.variant == PieceVariant.Bishop &&
+                        InterposedCount(piece.position, king.position, board) < 1
                        )
                 {
                     ++checkCount;
@@ -278,18 +330,18 @@ namespace Knight_Bishop
             return (checkCount, checkPos);
         }
 
-        private static bool IsInterposed(BoardPosition piece, BoardPosition king, Board board, PieceColor color)
+        private static int InterposedCount(BoardPosition piece, BoardPosition king, Board board)
         {
             
             int pCount = 0;
             foreach (BoardPosition pos in Interpose(piece, king) )
             {
                 pCount +=
-                    board.cellOccupants[pos.x, pos.y] == color ?
+                    board.cellOccupants[pos.x, pos.y] != null ?
                     1 : 0;
             }
 
-            return pCount > 1;
+            return pCount;
         }
         internal static List<BoardPosition> Interpose(BoardPosition piece, BoardPosition king)
         {
@@ -305,5 +357,7 @@ namespace Knight_Bishop
             }
             return result;
         }
+
+        public object Clone() => new Piece(color, variant, (BoardPosition)position.Clone());
     }
 }

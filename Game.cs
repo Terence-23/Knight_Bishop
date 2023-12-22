@@ -65,8 +65,6 @@ namespace Knight_Bishop
             }
             while (turnCount < 50)
             {
-                
-
                 if (currentMove == PieceColor.White)
                 {
                     if (type == GameType.White || type == GameType.All)
@@ -82,6 +80,7 @@ namespace Knight_Bishop
 
 
                     currentMove = PieceColor.Black;
+                    Stalemate();
                     if (CheckForRepetition()) { Repetition(); return; }
                     // check if next move is automatic
                     if (type == GameType.White || type == GameType.None) { return; }
@@ -100,14 +99,17 @@ namespace Knight_Bishop
 
                     ++turnCount;
                     currentMove = PieceColor.White;
+
+                    Stalemate();
                     if (CheckForRepetition()) { Repetition(); return; }
                     // check if next move is automatic
                     if (type == GameType.Black || type == GameType.None) { return; }
                 }
 
-                pictureBox.Refresh();
-                textBox.Refresh();
                 
+                textBox.Refresh();
+                pictureBox.Refresh();
+
                 Thread.Sleep(30);
             }
 
@@ -138,6 +140,16 @@ namespace Knight_Bishop
                 End(GameEndReason.Stalemate);
                 return;
             }
+            
+            // check if a move is possible
+            foreach(Piece piece in board.pieces)
+            {
+                if (piece.color == currentMove && piece.PossibleMoves(board, true).Count() > 0)
+                {
+                    return;
+                }
+            }
+            
             var (count, _) = Piece.IsCheck(board, king);
             if (count > 0)
             {
@@ -158,8 +170,8 @@ namespace Knight_Bishop
         }
 
         internal bool CheckForRepetition()
-        {
-            List<BoardPosition> positions = new List<BoardPosition>();
+        { 
+            List<BoardPosition> positions = new();
             foreach (Piece piece in board.pieces)
             {
                 positions.Add(piece.position);
@@ -187,7 +199,11 @@ namespace Knight_Bishop
         {
             Console.WriteLine(reason.ToString());
             Debug.WriteLine(reason.ToString());
-            textBox.Text += Environment.NewLine + Environment.NewLine + $"Game Ended: {reason}" + Environment.NewLine + Environment.NewLine;
+            textBox.Text += 
+                Environment.NewLine + Environment.NewLine + 
+                $"Game Ended: {reason}" 
+                + Environment.NewLine + Environment.NewLine;
+
 
         }
     }
