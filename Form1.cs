@@ -107,7 +107,7 @@ namespace Knight_Bishop
             // game start white
             game = new Game(
                 GameType.White,
-                new UnAwareMinMaxMover(6),
+                new UnAwareMinMaxMover(8),
                 new CenterMover(),
                 board,
                 pictureBox1,

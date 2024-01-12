@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Knight_Bishop
 {
@@ -193,6 +195,10 @@ namespace Knight_Bishop
         int depth = 2;
         int checkedMoves = 0;
         static readonly int mate = 1_000_000;
+
+        int alfa = -mate; // minimum possible
+        int beta = mate; // maximum possible 
+
         public UnAwareMinMaxMover(int depth)
         {
             this.depth = depth;
@@ -201,9 +207,180 @@ namespace Knight_Bishop
         public (Piece?, BoardPosition) NextMove(Board board, PieceColor color)
         {
             checkedMoves = 0;
-            var (piece, pos, _) = _NextMove(board, color, this.depth);
+            var (piece, pos, rating) = color == PieceColor.White? 
+                alphaBetaMax(board, alfa, beta, depth) : 
+                alphaBetaMin(board, alfa, beta, depth);
+
+            Console.WriteLine($"Positon rating: {rating}");
 
             return (piece, pos);
+        }
+
+        (Piece?, BoardPosition, int) alphaBetaMax(Board board, int alpha, int beta, int depth)
+        {
+
+            //possible moves
+            Piece? king = null;
+            List<(Piece, BoardPosition)> possibleMoves = new();
+            foreach (Piece piece in board.pieces)
+            {
+                if (piece.color != PieceColor.White)
+                {
+                    continue;
+                }
+                if (piece.variant == PieceVariant.King) { king = piece; }
+                var piecePossible = piece.PossibleMoves(board, true);
+                possibleMoves.EnsureCapacity(possibleMoves.Count + piecePossible.Count);
+                foreach (BoardPosition pos in piecePossible)
+                {
+
+                    possibleMoves.Add((piece, pos));
+                }
+            }
+
+            // check for mate and stalemate
+            if (possibleMoves.Count == 0 && king != null && Piece.IsCheckNow(board, king).Item1 > 0)
+            {
+                
+                //Console.WriteLine(Piece.IsCheckNow(board, king).Item1);
+                // checkmate
+                return (null, new(-1, -1), -mate);
+            }
+            else if (possibleMoves.Count == 0)
+            {
+                // stalemate
+                return (null, new(-1, -1), 0);
+            }
+
+            // recursion end, 
+            if (depth == 0)
+            {
+                int black = 0, white = 0;
+                foreach (Piece piece in board.pieces)
+                {
+                    if (piece.variant == PieceVariant.King)
+                    {
+                        continue;
+                    }
+                    if (piece.color == PieceColor.White)
+                    {
+                        white += 3;
+                    }
+                    else
+                    {
+                        black += 3;
+                    }
+                }
+                return (null, new(-1, -1), (white - black) * 100);
+
+            }
+            var alfa_move = (possibleMoves[0].Item1, possibleMoves[0].Item2, alpha);
+            foreach (var (piece, where) in possibleMoves)
+            {
+                board.UncheckedMove(piece, where);
+                var (_, _, rating) = alphaBetaMin(board, alfa_move.Item3, beta, depth - 1);
+                board.UnMove();
+                if (rating > 0)
+                {
+                    rating--;
+                }
+                else if (rating < 0)
+                {
+                    rating++;
+                }
+                if (rating >= beta)
+                    return (null, new(-1, -1), beta); // fail hard beta-cutoff
+                if (rating > alfa_move.Item3)
+                    alfa_move = (piece, where, rating); // alfa acts like max in MiniMax
+            }
+            checkedMoves++;
+            Console.WriteLine(alfa_move.Item3);
+            Console.WriteLine(checkedMoves);
+            return alfa_move;
+        }
+
+        (Piece?, BoardPosition, int) alphaBetaMin(Board board, int alpha, int beta, int depth)
+        {
+            //possible moves
+            Piece? king = null;
+            List<(Piece, BoardPosition)> possibleMoves = new();
+            foreach (Piece piece in board.pieces)
+            {
+                if (piece.color != PieceColor.Black)
+                {
+                    continue;
+                }
+                if (piece.variant == PieceVariant.King) { king = piece; }
+                var piecePossible = piece.PossibleMoves(board, true);
+                possibleMoves.EnsureCapacity(possibleMoves.Count + piecePossible.Count);
+                foreach (BoardPosition pos in piecePossible)
+                {
+
+                    possibleMoves.Add((piece, pos));
+                }
+            }
+
+            // check for mate and stalemate
+            if (possibleMoves.Count == 0 && king != null && Piece.IsCheckNow(board, king).Item1 > 0)
+            {
+                if (board.cellOccupants[4, 3] != null)
+                {
+                    Console.WriteLine("something");
+
+                }
+                Console.WriteLine(Piece.IsCheckNow(board, king).Item1);
+                // checkmate
+                return (null, new(-1, -1), mate);
+            }
+            else if (possibleMoves.Count == 0)
+            {
+                // stalemate
+                return (null, new(-1, -1), 0);
+            }
+
+            // recursion end, 
+            if (this.depth == 0)
+            {
+                int black = 0, white = 0;
+                foreach (Piece piece in board.pieces)
+                {
+                    if (piece.variant == PieceVariant.King)
+                    {
+                        continue;
+                    }
+                    if (piece.color == PieceColor.White)
+                    {
+                        white += 3;
+                    }
+                    else
+                    {
+                        black += 3;
+                    }
+                }
+                return (null, new(-1, -1), (white - black) * 100);
+
+            }
+            var beta_move = (possibleMoves[0].Item1, possibleMoves[0].Item2, beta);
+            foreach (var (piece, where) in possibleMoves)
+            {
+                board.UncheckedMove(piece, where);
+                var (_, _, rating) = alphaBetaMax(board, alpha, beta_move.Item3, depth - 1);
+                board.UnMove();
+                if (rating > 0)
+                {
+                    rating--;
+                }
+                else if (rating < 0)
+                {
+                    rating++;
+                }
+                if (rating <= alpha)
+                    return (null, new(-1, -1), alpha); // fail hard alpha-cutoff
+                if (rating < beta_move.Item3)
+                    beta_move = (piece, where, rating); // beta acts like min in MiniMax
+            }
+            Console.WriteLine(beta_move.Item3);
+            return beta_move;
         }
 
         public (Piece?, BoardPosition, int rating) _NextMove(Board board, PieceColor color, int depth)
@@ -231,10 +408,10 @@ namespace Knight_Bishop
             // check for mate and stalemate
             if (possibleMoves.Count == 0 && king != null && Piece.IsCheckNow(board, king).Item1 > 0)
             {
-                if (board.cellOccupants[4,3] != null)
+                if (board.cellOccupants[4, 3] != null)
                 {
                     Console.WriteLine("something");
-                    
+
                 }
                 Console.WriteLine(Piece.IsCheckNow(board, king).Item1);
                 // checkmate
@@ -265,7 +442,7 @@ namespace Knight_Bishop
                         black += 3;
                     }
                 }
-                return (null, new(-1, -1), (white-black) * 100);
+                return (null, new(-1, -1), (white - black) * 100);
 
             }
             // rate
